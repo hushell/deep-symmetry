@@ -16,9 +16,9 @@ from tqdm import tqdm
 import torch
 from torch.optim import SGD
 import torch.utils.data
-import torchvision.cvtransforms as T
+import torchvision.transforms as T
 import torchvision.datasets as datasets
-from torch.autograd import Variable
+from torch.utils.data import DataLoader
 import torch.nn.functional as F
 import torchnet as tnt
 from torchnet.engine import Engine
@@ -64,28 +64,20 @@ parser.add_argument('--gpu_id', default='0', type=str,
                     help='id(s) for CUDA_VISIBLE_DEVICES')
 
 
-def create_dataset(opt, mode):
-    convert = tnt.transform.compose([
-        lambda x: x.astype(np.float32),
-        T.Normalize(np.asarray([125.3, 123.0, 113.9], dtype=np.float32),
-                    np.asarray([63.0, 62.1, 66.7], dtype=np.float32)),
-        lambda x: x.transpose(2, 0, 1),
-        torch.from_numpy,
+def create_dataset(opt, train):
+    transform = T.Compose([
+        T.ToTensor(),
+        T.Normalize(np.array([125.3, 123.0, 113.9]) / 255.0,
+                    np.array([63.0, 62.1, 66.7]) / 255.0),
     ])
-
-    if mode:
-        convert = tnt.transform.compose([
+    if train:
+        transform = T.Compose([
+            T.Pad(4, padding_mode='reflect'),
             T.RandomHorizontalFlip(),
-            T.Pad(opt.randomcrop_pad, cv2.BORDER_REFLECT),
             T.RandomCrop(32),
-            convert,
+            transform
         ])
-
-    ds = getattr(datasets, opt.dataset)(opt.dataroot, train=mode, download=True)
-    smode = 'train' if mode else 'test'
-    ds = tnt.dataset.TensorDataset([getattr(ds, smode + '_data'),
-                                    getattr(ds, smode + '_labels')])
-    return ds.transform({0: convert})
+    return getattr(datasets, opt.dataset)(opt.dataroot, train=train, download=True, transform=transform)
 
 
 def main():
@@ -101,9 +93,8 @@ def main():
         os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
     def create_iterator(mode):
-        ds = create_dataset(opt, mode)
-        return ds.parallel(batch_size=opt.batch_size, shuffle=mode,
-                           num_workers=opt.nthread, pin_memory=torch.cuda.is_available())
+        return DataLoader(create_dataset(opt, mode), opt.batch_size, shuffle=mode,
+                          num_workers=opt.nthread, pin_memory=torch.cuda.is_available())
 
     train_loader = create_iterator(True)
     test_loader = create_iterator(False)
@@ -152,8 +143,8 @@ def main():
         os.mkdir(opt.save)
 
     def h(sample):
-        inputs = Variable(cast(sample[0], opt.dtype))
-        targets = Variable(cast(sample[1], 'long'))
+        inputs = cast(sample[0], opt.dtype)
+        targets = cast(sample[1], 'long')
         y = data_parallel(f, inputs, params, stats, sample[2], list(range(opt.ngpu)))
         return F.cross_entropy(y, targets), y
 
@@ -173,7 +164,7 @@ def main():
         state['sample'].append(state['train'])
 
     def on_forward(state):
-        loss = state['loss'].data[0]
+        loss = state['loss'].item()
         classacc.add(state['output'].data, state['sample'][1])
         meter_loss.add(loss)
         if state['train']:
