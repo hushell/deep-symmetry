@@ -21,13 +21,14 @@ First install [PyTorch](https://pytorch.org), then install [torchnet](https://gi
 pip install git+https://github.com/pytorch/tnt.git@master
 ```
 
-To train SymmWideResNet on CIFAR10 with triangular symmetry:
+To train SymmWideResNet on CIFAR10 with triangular symmetry,
+enter symmWideResNet directory, and run
 
 ```bash
 python main.py --width 1 --depth 16 --model resnet --dataset CIFAR10 --symm-type tri
 ```
 
-To train SymmRNN, please check README.md in symmRNN sub-folder.
+To train SymmRNN, please check README.md in symmRNN directory.
 
 ## Bibtex
 
