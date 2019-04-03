@@ -1,67 +1,41 @@
-# Symmetric RNN language model for PennTree and Wikitext-2
+WideResNets & RNNs with weight symmetry
+=========
 
-The code is adapted from Pytorch's RNN example, 
-which is tested with Pytorch 0.3.0.
+PyTorch 0.3 code for *Exploring Weight Symmetry in Deep Neural Networks*
 
-During training, if a keyboard interrupt (Ctrl-C) is received,
-training is stopped and the current model is evaluated against the test dataset.
+<https://arxiv.org/abs/1812.11027>
 
-The `main.py` script accepts the following arguments:
+We propose to impose symmetry in neural network parameters to improve parameter usage and make use of dedicated convolution and matrix multiplication routines. Due to significant reduction in the number of parameters as a result of the symmetry constraints, one would expect a dramatic drop in accuracy. Surprisingly, we show that this is not the case, and, depending on network size, symmetry can have little or no negative effect on network accuracy, especially in deep overparameterized networks. We propose several ways to impose local symmetry in recurrent and convolutional neural networks, and show that our symmetry parameterizations satisfy universal approximation property for single hidden layer networks. We extensively evaluate these parameterizations on CIFAR, ImageNet and language modeling datasets, showing significant benefits from the use of symmetry. For instance, our ResNet-101 with channel-wise symmetry has almost 25% less parameters and only 0.2% accuracy loss on ImageNet.
+
+
+## Main idea in two sentences
+
+We only learn a fraction of weights for a Conv/Linear layer. The other weights of that layer are generated dynamically by repeating the learned weights.
+
+
+### Requirements
+
+First install [PyTorch](https://pytorch.org), then install [torchnet](https://github.com/pytorch/tnt):
+
+```
+pip install git+https://github.com/pytorch/tnt.git@master
+```
+
+To train SymmWideResNet on CIFAR10 with triangular symmetry:
 
 ```bash
-optional arguments:
-  -h, --help         show this help message and exit
-  --data DATA        location of the data corpus
-  --model MODEL      type of recurrent net (RNN_TANH, RNN_RELU, LSTM, GRU)
-  --emsize EMSIZE    size of word embeddings
-  --nhid NHID        number of hidden units per layer
-  --nlayers NLAYERS  number of layers
-  --lr LR            initial learning rate
-  --clip CLIP        gradient clipping
-  --epochs EPOCHS    upper epoch limit
-  --batch-size N     batch size
-  --bptt BPTT        sequence length
-  --dropout DROPOUT  dropout applied to layers (0 = no dropout)
-  --decay DECAY      learning rate decay per epoch
-  --tied             tie the word embedding and softmax weights
-  --seed SEED        random seed
-  --cuda             use CUDA
-  --log-interval N   report interval
-  --save SAVE        path to save the final model
-  --symm_hh          turn on symmetry on hh module
-  --symm_ih          turn on symmetry on ih module
-  --symm_type        which symmetry parameterization to be used
+python main.py --width 1 --depth 16 --model resnet --dataset CIFAR10 --symm-type tri
 ```
 
-With these arguments, a variety of models can be tested.
+To train SymmRNN, please check README.md in symmRNN sub-folder.
 
-# Commands to reproduce our experiments:
-* full model 
-```
-CUDA_VISIBLE_DEVICES=0 python main.py --model LSTM --cuda --emsize 650 --nhid 650 --dropout 0.5 --epochs 50
-```
-| card | valid ppl | test ppl | time per epoch | dataset    |
-|------|-----------|----------|:---------------|------------|
-| T-B  | 99.72     | 94.47    | 288s           | wikitext-2 |
-| T-B  | 84.65     | 81.40    | 79s            | penn-tree  |
+## Bibtex
 
-* symmetry on `hh`
 ```
-CUDA_VISIBLE_DEVICES=0 python main.py --model symmLSTM --symm_hh 1111 --symm_ih 0000 --symm_type wwt --cuda --emsize 650 --nhid 650 --dropout 0.5 --epochs 50
+@article{hu2018exploring,
+  title={Exploring Weight Symmetry in Deep Neural Network},
+  author={Hu, Shell Xu and Zagoruyko, Sergey and Komodakis, Nikos},
+  journal={arXiv preprint arXiv:1812.11027},
+  year={2018}
+}
 ```
-| card | valid ppl | test ppl | time per epoch | dataset    |
-|------|-----------|----------|:---------------|------------|
-| T-X  | 100.90    | 95.11    | 380s           | wikitext-2 |
-| T-B  | 84.19     | 79.89    | 291s           | penn-tree  |
-
-
-* symmetric both `hh` and `ih`
-```
-CUDA_VISIBLE_DEVICES=0 python main.py --model symmLSTM --symm_hh 1111 --symm_ih 1111 --symm_type wwt --cuda --emsize 650 --nhid 650 --dropout 0.5 --epochs 50
-```
-
-| card | valid ppl | test ppl | time per epoch | dataset    |
-|------|-----------|----------|:---------------|------------|
-| P100 | 103.23    | 98.40    | 307            | wikitext-2 |
-| T-B  | 86.35     | 82.97    | 379s           | penn-tree  |
-
