@@ -34,7 +34,7 @@ To train SymmRNN, please check README.md in symmRNN directory.
 
 ```
 @article{hu2018exploring,
-  title={Exploring Weight Symmetry in Deep Neural Network},
+  title={Exploring Weight Symmetry in Deep Neural Networks},
   author={Hu, Shell Xu and Zagoruyko, Sergey and Komodakis, Nikos},
   journal={arXiv preprint arXiv:1812.11027},
   year={2018}
